@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Captain Cool - Minimalist Sports HUD</title>
+  <link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;600;700&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: rgba(255, 255, 255, 0.03);
+      --border: rgba(255, 255, 255, 0.1);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+
+      /* Accents */
+      --dhoni: #eab308;
+      --kohli: #ef4444;
+      --rohit: #3b82f6;
+      --gambhir: #a855f7;
+
+      --font-sports: "Teko", sans-serif;
+      --font-body: "Inter", sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 50px 50px;
+    }
+
+    h1,
+    h2,
+    h3,
+    .sports-text {
+      font-family: var(--font-sports);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Modal */
+    #api-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(5px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 2.5rem;
+      border-radius: 8px;
+      text-align: center;
+      width: 90%;
+      max-width: 400px;
+      animation: slideUp 0.4s ease;
+    }
+
+    .modal-content h2 {
+      font-size: 2.5rem;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-content p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-content input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 1.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: #fff;
+      font-family: var(--font-body);
+      border-radius: 4px;
+      outline: none;
+    }
+
+    .modal-content input:focus {
+      border-color: var(--text-main);
+    }
+
+    .modal-content button {
+      background: #fff;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      font-family: var(--font-sports);
+      font-size: 1.5rem;
+      width: 100%;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: 0.2s;
+    }
+
+    .modal-content button:hover {
+      background: #e2e8f0;
+    }
+
+    /* Header */
+    header {
+      height: 60px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 24px;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .live-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+      font-family: var(--font-sports);
+      font-size: 1.2rem;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background: #ef4444;
+      border-radius: 50%;
+      animation: blink 1.5s infinite;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      color: #fff;
+    }
+
+    #compare-toggle-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 6px 16px;
+      font-family: var(--font-sports);
+      font-size: 1.2rem;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: 0.2s;
+    }
+
+    #compare-toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Layout */
+    .main-container {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+      padding: 20px;
+      flex: 1;
+      overflow: hidden;
+      height: calc(100vh - 60px);
+      /* 60px header */
+    }
+
+    /* Left Panel */
+    .control-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      overflow-y: auto;
+    }
+
+    .panel-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 16px;
+      border-radius: 8px;
+    }
+
+    .panel-title {
+      font-family: var(--font-sports);
+      font-size: 1.5rem;
+      color: #fff;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 4px;
+    }
+
+    /* Captains */
+    .captains {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .captain-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .captain-card .emoji {
+      font-size: 1.8rem;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .captain-card .name {
+      font-family: var(--font-sports);
+      font-size: 1.3rem;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    .captain-card:hover {
+      transform: translateY(-2px);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .captain-card[data-id="dhoni"].active {
+      border-color: var(--dhoni);
+      box-shadow: 0 0 15px rgba(234, 179, 8, 0.2);
+    }
+
+    .captain-card[data-id="dhoni"].active .name {
+      color: var(--dhoni);
+    }
+
+    .captain-card[data-id="kohli"].active {
+      border-color: var(--kohli);
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+    }
+
+    .captain-card[data-id="kohli"].active .name {
+      color: var(--kohli);
+    }
+
+    .captain-card[data-id="rohit"].active {
+      border-color: var(--rohit);
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+    }
+
+    .captain-card[data-id="rohit"].active .name {
+      color: var(--rohit);
+    }
+
+    .captain-card[data-id="gambhir"].active {
+      border-color: var(--gambhir);
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+    }
+
+    .captain-card[data-id="gambhir"].active .name {
+      color: var(--gambhir);
+    }
+
+    /* Input */
+    textarea {
+      width: 100%;
+      height: 80px;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 10px;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      border-radius: 4px;
+      outline: none;
+      resize: none;
+      margin-bottom: 10px;
+    }
+
+    textarea:focus {
+      border-color: #fff;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 8px;
+      font-family: var(--font-sports);
+      font-size: 1.2rem;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: 0.2s;
+      border: none;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-primary {
+      background: #fff;
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      background: #e2e8f0;
+    }
+
+    /* Pressure Meter */
+    .pressure-meter {
+      padding: 15px 0;
+    }
+
+    .pressure-label {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-sports);
+      font-size: 1.3rem;
+      margin-bottom: 8px;
+    }
+
+    .pressure-track {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .pressure-fill {
+      height: 100%;
+      width: 0%;
+      background: #fff;
+      transition: width 1s ease, background 0.5s ease;
+    }
+
+    /* War Room */
+    #war-room-toggle {
+      font-family: var(--font-sports);
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      text-align: center;
+      padding-top: 10px;
+      transition: 0.2s;
+    }
+
+    #war-room-toggle:hover {
+      color: #fff;
+    }
+
+    #war-room-content {
+      margin-top: 10px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: #10b981;
+      background: #000;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-y: auto;
+      max-height: 150px;
+      display: none;
+    }
+
+    /* Center Arena */
+    .arena {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .transcript {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      padding-bottom: 100px;
+      padding-right: 10px;
+    }
+
+    .chat-msg {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 16px;
+      border-radius: 8px;
+      animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      opacity: 0;
+      transform: translateY(20px);
+      max-width: 85%;
+    }
+
+    .chat-msg.strategist {
+      border-left: 4px solid var(--dhoni);
+      align-self: flex-start;
+    }
+
+    .chat-msg.advocate {
+      border-right: 4px solid var(--text-muted);
+      align-self: flex-end;
+      text-align: right;
+    }
+
+    .chat-msg .author {
+      font-family: var(--font-sports);
+      font-size: 1.4rem;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chat-msg.advocate .author {
+      justify-content: flex-end;
+      color: var(--text-muted);
+    }
+
+    .chat-msg .content {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--text-main);
+    }
+
+    .confidence-score {
+      font-family: var(--font-sports);
+      font-size: 1.2rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      margin-left: auto;
+    }
+
+    .counterfactual {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: #ef4444;
+      font-style: italic;
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+    }
+
+    /* Lower Third (Commentator) */
+    .lower-third {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid var(--border);
+      border-left: 4px solid #fff;
+      padding: 16px 24px;
+      border-radius: 8px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      z-index: 5;
+    }
+
+    .lower-third h3 {
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      margin-bottom: 4px;
+    }
+
+    .lower-third p {
+      font-size: 1rem;
+      line-height: 1.4;
+      color: #fff;
+      font-weight: 500;
+    }
+
+    /* Compare Mode */
+    .compare-grid {
+      display: none;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .compare-col {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .compare-col h3 {
+      text-align: center;
+      font-size: 1.8rem;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Dynamic Compare Headers */
+    #col-dhoni h3 {
+      color: var(--dhoni);
+    }
+
+    #col-kohli h3 {
+      color: var(--kohli);
+    }
+
+    #col-rohit h3 {
+      color: var(--rohit);
+    }
+
+    #col-gambhir h3 {
+      color: var(--gambhir);
+    }
+
+    /* Bottom Ticker (Whispers) */
+    footer {
+      display: none;
+      height: 40px;
+      background: #000;
+      border-top: 1px solid var(--border);
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .ticker-label {
+      background: #fff;
+      color: #000;
+      font-family: var(--font-sports);
+      font-size: 1.2rem;
+      padding: 0 15px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      z-index: 2;
+      border-right: 1px solid #333;
+    }
+
+    .ticker-wrapper {
+      flex: 1;
+      overflow: hidden;
+      white-space: nowrap;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .whisper-card {
+      display: inline-block;
+      padding: 0 20px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      border-right: 1px solid #333;
+    }
+
+    .whisper-card strong {
+      color: #fff;
+      padding-right: 10px;
+    }
+
+    #whisper-feed {
+      display: inline-block;
+      white-space: nowrap;
+      animation: ticker 25s linear infinite;
+    }
+
+    #loader {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: var(--font-sports);
+      font-size: 2rem;
+      color: #fff;
+      display: none;
+      letter-spacing: 2px;
+      animation: blink 1s infinite;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideUpFade {
+      from {
+        opacity: 0;
+        transform: translateY(15px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
+    }
+
+    @keyframes ticker {
+      0% {
+        transform: translateX(100vw);
+      }
+
+      100% {
+        transform: translateX(-100%);
+      }
+    }
+    
+    @keyframes ribbon-pop {
+      0% { transform: translateX(-50%) scale(0.9) translateY(10px); box-shadow: 0 0 0 rgba(255,215,0,0); }
+      50% { transform: translateX(-50%) scale(1.02) translateY(-5px); box-shadow: 0 0 40px rgba(255,215,0,0.8); border-color: #ffd700; }
+      100% { transform: translateX(-50%) scale(1) translateY(0); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    }
+    .lower-third.pop {
+      animation: ribbon-pop 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+      border-image: linear-gradient(45deg, #ff007f, #ffd700, #00ffff) 1;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+
+<body>
+
+  <div id="api-modal">
+    <div class="modal-content">
+      <h2 class="sports-text">SYSTEM INITIALIZATION</h2>
+      <p>Enter Gemini API Key to establish secure uplink.</p>
+      <input type="password" id="api-key-input" placeholder="AIzaSy...">
+      <button id="save-key-btn">CONNECT</button>
+    </div>
+  </div>
+
+  <header>
+    <div class="brand">
+      <div class="live-indicator">
+        <div class="live-dot"></div> ON AIR
+      </div>
+      <h1>CAPTAINS HUD</h1>
+    </div>
+    <div class="header-controls">
+      <button id="compare-toggle-btn">COMPARE MODE</button>
+    </div>
+  </header>
+
+  <div class="main-container">
+
+    <!-- Left Panel -->
+    <div class="control-panel">
+
+      <div class="panel-box">
+        <h2 class="panel-title">SELECT TACTICIAN</h2>
+        <div class="captains" id="captain-selector">
+          <div class="captain-card active" data-id="dhoni">
+            <span class="emoji">🧊</span><span class="name">DHONI</span>
+          </div>
+          <div class="captain-card" data-id="kohli">
+            <span class="emoji">🔥</span><span class="name">KOHLI</span>
+          </div>
+          <div class="captain-card" data-id="rohit">
+            <span class="emoji">🌊</span><span class="name">ROHIT</span>
+          </div>
+          <div class="captain-card" data-id="gambhir">
+            <span class="emoji">⚔️</span><span class="name">GAMBHIR</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-box">
+        <h2 class="panel-title">MATCH SCENARIO</h2>
+        <textarea id="match-input" placeholder="Input match situation..."></textarea>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="load-demo-btn">DEMO</button>
+          <button class="btn btn-primary" id="run-btn">EXECUTE</button>
+        </div>
+      </div>
+
+      <div class="panel-box pressure-meter">
+        <div class="pressure-label"><span>PRESSURE INDEX</span> <span id="pressure-val">0</span></div>
+        <div class="pressure-track">
+          <div class="pressure-fill" id="pressure-fill"></div>
+        </div>
+      </div>
+
+      <div class="panel-box" style="flex: 1; display: flex; flex-direction: column;">
+        <div id="war-room-toggle">[+] VIEW RAW TELEMETRY</div>
+        <div id="war-room-content"></div>
+      </div>
+
+    </div>
+
+    <!-- Center Arena -->
+    <div class="arena">
+
+      <div class="transcript-container" id="transcript-container"
+        style="height: 100%; display: flex; flex-direction: column;">
+        <div class="transcript" id="transcript">
+          <div style="color: #666; text-align: center; margin-top: 50px;">Awaiting match parameters...</div>
+        </div>
+        <div class="lower-third">
+          <h3 class="sports-text">COMMENTARY DESK</h3>
+          <p id="commentator-text" style="color: #666; font-style: italic;">Awaiting match action...</p>
+        </div>
+      </div>
+
+      <div class="compare-grid" id="compare-grid">
+        <div class="compare-col" id="col-dhoni" style="display:none;">
+          <h3>DHONI</h3>
+          <div class="col-content"></div>
+        </div>
+        <div class="compare-col" id="col-kohli" style="display:none;">
+          <h3>KOHLI</h3>
+          <div class="col-content"></div>
+        </div>
+        <div class="compare-col" id="col-rohit" style="display:none;">
+          <h3>ROHIT</h3>
+          <div class="col-content"></div>
+        </div>
+        <div class="compare-col" id="col-gambhir" style="display:none;">
+          <h3>GAMBHIR</h3>
+          <div class="col-content"></div>
+        </div>
+      </div>
+
+      <div id="loader">PROCESSING...</div>
+    </div>
+
+  </div>
+
+  <footer>
+    <div class="ticker-label">LATEST UPDATES</div>
+    <div class="ticker-wrapper">
+      <div id="whisper-feed">
+        <div class="whisper-card">System standing by...</div>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { GoogleGenAI, Type } from 'https://esm.run/@google/genai';
+
+    let ai = null;
+    let selectedCaptain = 'dhoni';
+    let isCompareMode = false;
+
+    // Elements
+    const apiModal = document.getElementById('api-modal');
+    const apiKeyInput = document.getElementById('api-key-input');
+    const saveKeyBtn = document.getElementById('save-key-btn');
+    const matchInput = document.getElementById('match-input');
+    const loadDemoBtn = document.getElementById('load-demo-btn');
+    const runBtn = document.getElementById('run-btn');
+    const captainCards = document.querySelectorAll('.captain-card');
+    const whisperFeed = document.getElementById('whisper-feed');
+    const transcript = document.getElementById('transcript');
+    const pressureFill = document.getElementById('pressure-fill');
+    const pressureVal = document.getElementById('pressure-val');
+    const commentatorText = document.getElementById('commentator-text');
+    const warRoomToggle = document.getElementById('war-room-toggle');
+    const warRoomContent = document.getElementById('war-room-content');
+    const loader = document.getElementById('loader');
+    const compareToggleBtn = document.getElementById('compare-toggle-btn');
+    const transcriptContainer = document.getElementById('transcript-container');
+    const compareGrid = document.getElementById('compare-grid');
+
+    const DEMO_SCENARIO = "CSK vs MI, 2nd innings, over 18, CSK needs 34 off 18, Dhoni on strike, Bumrah has 2 overs left, dew heavy, Wankhede.";
+
+    const CAPTAINS = {
+      dhoni: "Ice. Instinct. No panic. Minimal words. Backs his bowlers.",
+      kohli: "Aggressive. Emotional. Goes for the kill. Never settles.",
+      rohit: "Patient. Reads the game. Plans 3 overs ahead. Calm chaos.",
+      gambhir: "Defensive first. War room. Confrontational. Hates leaking runs."
+    };
+
+    // Init API
+    saveKeyBtn.addEventListener('click', () => {
+      const key = apiKeyInput.value.trim();
+      if (key) {
+        ai = new GoogleGenAI({ apiKey: key });
+        apiModal.style.display = 'none';
+      } else {
+        alert("Please enter an API Key");
+      }
+    });
+
+    // Load Demo
+    loadDemoBtn.addEventListener('click', () => {
+      matchInput.value = DEMO_SCENARIO;
+    });
+
+    // Select Captain
+    captainCards.forEach(card => {
+      card.addEventListener('click', () => {
+        if (isCompareMode) return;
+        captainCards.forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        selectedCaptain = card.dataset.id;
+      });
+    });
+
+    // Toggle Compare Mode
+    compareToggleBtn.addEventListener('click', () => {
+      isCompareMode = !isCompareMode;
+      if (isCompareMode) {
+        compareToggleBtn.style.background = 'var(--dhoni)';
+        compareToggleBtn.style.color = '#000';
+        transcriptContainer.style.display = 'none';
+        compareGrid.style.display = 'grid';
+        captainCards.forEach(c => c.style.pointerEvents = 'none');
+      } else {
+        compareToggleBtn.style.background = 'transparent';
+        compareToggleBtn.style.color = '#fff';
+        transcriptContainer.style.display = 'flex';
+        compareGrid.style.display = 'none';
+        captainCards.forEach(c => c.style.pointerEvents = 'auto');
+      }
+    });
+
+    // War Room Toggle
+    warRoomToggle.addEventListener('click', () => {
+      if (warRoomContent.style.display === 'block') {
+        warRoomContent.style.display = 'none';
+        warRoomToggle.textContent = '[+] VIEW RAW TELEMETRY';
+      } else {
+        warRoomContent.style.display = 'block';
+        warRoomToggle.textContent = '[-] HIDE RAW TELEMETRY';
+      }
+    });
+
+    // Helper: Add Whisper
+    function addWhisper(agent, text) {
+      const el = document.createElement('div');
+      el.className = 'whisper-card';
+      el.innerHTML = `<strong>${agent}</strong>${text}`;
+      whisperFeed.appendChild(el);
+      console.log(`[Whisper] ${agent}: ${text}`);
+    }
+
+    // Helper: Add Transcript Message
+    function addMessage(agent, text, type = 'normal', confScore = null, counterfactual = null, container = transcript) {
+      const el = document.createElement('div');
+      el.className = `chat-msg ${type}`;
+
+      let confHtml = '';
+      if (confScore !== null) {
+        let color = '#3b82f6'; // rohit
+        if (confScore < 55) color = '#ef4444'; // kohli
+        else if (confScore < 75) color = '#eab308'; // dhoni
+        confHtml = `<span class="confidence-score" style="color: ${color};">${confScore}% Conf</span>`;
+      }
+
+      let cfHtml = '';
+      if (counterfactual) {
+        cfHtml = `<div class="counterfactual">🔴 Alternative cost: ${counterfactual}</div>`;
+      }
+
+      let authorStyle = '';
+      if (type === 'strategist') {
+        let capMatch = agent.match(/\((.*?)\)/);
+        let cap = capMatch ? capMatch[1] : selectedCaptain;
+        
+        if (cap === 'dhoni') authorStyle = 'color: var(--dhoni);';
+        if (cap === 'kohli') authorStyle = 'color: var(--kohli);';
+        if (cap === 'rohit') authorStyle = 'color: var(--rohit);';
+        if (cap === 'gambhir') authorStyle = 'color: var(--gambhir);';
+
+        // Dynamically set border color for strategist message based on captain
+        let bColor = 'var(--dhoni)';
+        if (cap === 'kohli') bColor = 'var(--kohli)';
+        if (cap === 'rohit') bColor = 'var(--rohit)';
+        if (cap === 'gambhir') bColor = 'var(--gambhir)';
+        el.style.borderLeftColor = `var(--${cap})`;
+      }
+
+      el.innerHTML = `
+        <div class="author" style="${authorStyle}">${agent} ${confHtml}</div>
+        <div class="content">${text}</div>
+        ${cfHtml}
+      `;
+      container.appendChild(el);
+      // If the container is inside a compare column, scroll the parent instead
+      if (container.classList.contains('col-content')) {
+        container.parentElement.scrollTop = container.parentElement.scrollHeight;
+      } else {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+
+    function updatePressure(val) {
+      pressureVal.textContent = val;
+      pressureFill.style.width = `${val}%`;
+      if (val > 75) {
+        pressureFill.style.background = 'var(--kohli)';
+      } else if (val > 50) {
+        pressureFill.style.background = 'var(--dhoni)';
+      } else {
+        pressureFill.style.background = 'var(--rohit)';
+      }
+    }
+
+    // Real API Call for Weather
+    async function fetchWeather(scenario) {
+      // Very basic extraction of venue city, defaulting to Mumbai
+      let city = 'Mumbai';
+      if (scenario.toLowerCase().includes('chennai')) city = 'Chennai';
+      if (scenario.toLowerCase().includes('bengaluru')) city = 'Bengaluru';
+
+      try {
+        const res = await fetch(`https://wttr.in/${city}?format=j1`);
+        const data = await res.json();
+        return JSON.stringify({
+          temp: data.current_condition[0].temp_C,
+          humidity: data.current_condition[0].humidity,
+          desc: data.current_condition[0].weatherDesc[0].value
+        });
+      } catch (e) {
+        console.error("Weather fetch failed", e);
+        return JSON.stringify({ error: "Could not fetch weather, assume humid and heavy dew." });
+      }
+    }
+
+    // Helper: Safe Generate Content (Mock Fallback)
+    async function safeGenerateContent(prompt, schema, mockDataObj) {
+      try {
+        const res = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: schema,
+            temperature: 0.7
+          }
+        });
+        return JSON.parse(res.text);
+      } catch (e) {
+        console.warn("API Call Failed. Falling back to Mock Data. Error:", e);
+
+        let errMsg = "API ERROR";
+        if (e && e.message) errMsg = e.message.substring(0, 50) + "...";
+        else if (typeof e === 'string') errMsg = e.substring(0, 50) + "...";
+
+        addWhisper('SYSTEM', `⚠️ API OFFLINE (${errMsg}). ENGAGING SIMULATION.`);
+        // Simulate network delay
+        await new Promise(r => setTimeout(r, 1500));
+        return mockDataObj;
+      }
+    }
+
+    // Agent Logic
+    async function runAgentFlow(scenario, captainId, uiContainer, statsDataOverride = null) {
+      const captainPersonality = CAPTAINS[captainId];
+      let warRoomData = {};
+
+      let statsData;
+      if (statsDataOverride) {
+        statsData = statsDataOverride;
+        warRoomData.stats = statsData;
+      } else {
+        // 1. StatsAnalyst
+        const weatherData = await fetchWeather(scenario);
+        const statsPrompt = `You are a cold data machine. Analyze the match state: "${scenario}". Weather info: ${weatherData}. Calculate live dew probability score based on weather.`;
+
+        const statsSchema = {
+          type: Type.OBJECT,
+          properties: {
+            bowler_recommendation: { type: Type.STRING },
+            batting_risk: { type: Type.STRING },
+            pitch_factor: { type: Type.STRING },
+            dew_impact: { type: Type.STRING },
+            pressure_index: { type: Type.INTEGER },
+            whisper: { type: Type.STRING }
+          },
+          required: ["bowler_recommendation", "batting_risk", "pitch_factor", "dew_impact", "pressure_index", "whisper"]
+        };
+
+        const mockStatsData = { bowler_recommendation: "Deploy strike bowler.", batting_risk: "High due to pressure.", pitch_factor: "Flat deck.", dew_impact: "Moderate.", pressure_index: 88, whisper: "[MOCK] Critical phase detected." };
+        statsData = await safeGenerateContent(statsPrompt, statsSchema, mockStatsData);
+        warRoomData.stats = statsData;
+
+        if (!isCompareMode || captainId === selectedCaptain) {
+          addWhisper('StatsAnalyst', statsData.whisper);
+          updatePressure(statsData.pressure_index);
+        }
+      }
+
+      // Format confidence and tone rules for Strategist based on pressure
+      let toneRules = "";
+      if (statsData.pressure_index < 50) {
+        toneRules = "Use confident tone, long reasoning, confidence score 75-95%.";
+      } else if (statsData.pressure_index <= 75) {
+        toneRules = "Use slightly hedged language ('I believe', 'probably'), confidence score 55-74%.";
+      } else {
+        toneRules = "Use urgent short sentences. Add line: 'This is a gut call. No time to second-guess.' Confidence score 35-54%.";
+      }
+      if (scenario.toLowerCase().includes('18') || scenario.toLowerCase().includes('19') || scenario.toLowerCase().includes('20')) {
+        // basic check for death overs
+        toneRules += " It is death overs. If within 15 runs needed, confidence score floor is 40%, and MUST say 'Even Dhoni wouldn't be certain here.'";
+      }
+
+      // 2. Mega Agent Simulation
+      const simulationPrompt = `You are a cricket strategy simulation engine. 
+Simulate a debate between 4 entities regarding this scenario: "${scenario}".
+Selected Captain: ${captainId.toUpperCase()}. Personality: ${captainPersonality}.
+Live Pitch Stats: ${JSON.stringify(statsData)}.
+Pressure Rules for Strategist: ${toneRules}.
+
+Execute the debate in this order and output exactly this JSON schema:
+1. "strategist_r1": The captain makes the initial strategic decision + 3 sentence reasoning + confidence score.
+2. "devils_advocate": A sharp cricket mind finds the fatal flaw/risk in that decision and proposes an alternative.
+3. "strategist_r2": The captain either defends their call or revises it based the challenge. Output a counterfactual ('-11% win probability').
+4. "commentator": A dynamic multi-commentator response. Start with Harsha Bhogle's analysis, followed by Ravi Shastri's passionate reaction.`;
+
+      const simulationSchema = {
+        type: Type.OBJECT,
+        properties: {
+          strategist_r1: {
+            type: Type.OBJECT,
+            properties: { decision: { type: Type.STRING }, reasoning: { type: Type.STRING }, confidence_score: { type: Type.INTEGER }, whisper: { type: Type.STRING } },
+            required: ["decision", "reasoning", "confidence_score", "whisper"]
+          },
+          devils_advocate: {
+            type: Type.OBJECT,
+            properties: { challenge: { type: Type.STRING }, alternative: { type: Type.STRING }, whisper: { type: Type.STRING } },
+            required: ["challenge", "alternative", "whisper"]
+          },
+          strategist_r2: {
+            type: Type.OBJECT,
+            properties: { final_decision: { type: Type.STRING }, changed: { type: Type.BOOLEAN }, why: { type: Type.STRING }, counterfactual: { type: Type.STRING }, whisper: { type: Type.STRING } },
+            required: ["final_decision", "changed", "why", "counterfactual", "whisper"]
+          },
+          commentator: {
+            type: Type.OBJECT,
+            properties: { commentary: { type: Type.STRING }, whisper: { type: Type.STRING } },
+            required: ["commentary", "whisper"]
+          }
+        },
+        required: ["strategist_r1", "devils_advocate", "strategist_r2", "commentator"]
+      };
+
+      const mockSimData = {
+        strategist_r1: { decision: "I will trust my gut and attack.", reasoning: "We need wickets to stem the flow. Pressure creates mistakes.", confidence_score: 82, whisper: "[MOCK] Attack is the best defense." },
+        devils_advocate: { challenge: "Attacking field leaves gaps.", alternative: "Bowl defensive lines.", whisper: "[MOCK] Don't leak runs." },
+        strategist_r2: { final_decision: "Standing firm on attack.", changed: false, why: "I back my bowler.", counterfactual: "-12% win probability", whisper: "[MOCK] Trust the process." },
+        commentator: { commentary: "Harsha Bhogle: The captain goes for the kill! What a bold move in this situation!\nRavi Shastri: Exactly what the doctor ordered! You cannot buy experience like this in the supermarket!", whisper: "[MOCK] Electric atmosphere." }
+      };
+
+      const simData = await safeGenerateContent(simulationPrompt, simulationSchema, mockSimData);
+      warRoomData.simulation = simData;
+
+      // Render sequentially to simulate real-time back and forth
+      if (!isCompareMode || captainId === selectedCaptain) {
+        addWhisper(`Strategist (${captainId})`, simData.strategist_r1.whisper);
+        addMessage(`Strategist (${captainId})`, `<strong>${simData.strategist_r1.decision}</strong><br/>${simData.strategist_r1.reasoning}`, 'strategist', simData.strategist_r1.confidence_score, null, uiContainer);
+
+        await new Promise(r => setTimeout(r, 1000));
+
+        addWhisper('DevilsAdvocate', simData.devils_advocate.whisper);
+        addMessage('DevilsAdvocate', `<strong>Challenge:</strong> ${simData.devils_advocate.challenge}<br/><strong>Alternative:</strong> ${simData.devils_advocate.alternative}`, 'advocate', null, null, uiContainer);
+
+        await new Promise(r => setTimeout(r, 1000));
+
+        addWhisper(`Strategist (${captainId})`, simData.strategist_r2.whisper);
+        let prefix = simData.strategist_r2.changed ? "🔴 REVISED DECISION:" : "🟢 STANDING FIRM:";
+        addMessage(`Strategist (${captainId})`, `<strong>${prefix} ${simData.strategist_r2.final_decision}</strong><br/>${simData.strategist_r2.why}`, 'strategist', null, simData.strategist_r2.counterfactual, uiContainer);
+
+        await new Promise(r => setTimeout(r, 1000));
+
+        addWhisper('Commentator', simData.commentator.whisper);
+        commentatorText.innerHTML = simData.commentator.commentary.replace(/\n/g, '<br/><br/>');
+        const desk = commentatorText.parentElement;
+        desk.classList.remove('pop');
+        void desk.offsetWidth; // trigger reflow
+        desk.classList.add('pop');
+        if (typeof confetti !== 'undefined') {
+          confetti({
+            particleCount: 150,
+            spread: 90,
+            origin: { y: 0.8 },
+            colors: ['#ff007f', '#ffd700', '#00ffff']
+          });
+        }
+
+        warRoomContent.textContent = JSON.stringify(warRoomData, null, 2);
+      } else {
+        // Compare mode, render immediately for the non-primary column
+        addMessage(`Strategist (${captainId})`, `<strong>${simData.strategist_r1.decision}</strong><br/>${simData.strategist_r1.reasoning}`, 'strategist', simData.strategist_r1.confidence_score, null, uiContainer);
+        addMessage('DevilsAdvocate', `<strong>Challenge:</strong> ${simData.devils_advocate.challenge}<br/><strong>Alternative:</strong> ${simData.devils_advocate.alternative}`, 'advocate', null, null, uiContainer);
+        let prefix = simData.strategist_r2.changed ? "🔴 REVISED DECISION:" : "🟢 STANDING FIRM:";
+        addMessage(`Strategist (${captainId})`, `<strong>${prefix} ${simData.strategist_r2.final_decision}</strong><br/>${simData.strategist_r2.why}`, 'strategist', null, simData.strategist_r2.counterfactual, uiContainer);
+      }
+
+      return warRoomData;
+    }
+
+    runBtn.addEventListener('click', async () => {
+      const scenario = matchInput.value.trim();
+      if (!scenario) return alert("Enter a scenario");
+      if (!ai) return alert("API Key not initialized");
+
+      runBtn.disabled = true;
+      loader.style.display = 'block';
+      whisperFeed.innerHTML = '';
+      warRoomContent.textContent = '';
+      commentatorText.textContent = 'Processing...';
+
+      if (isCompareMode) {
+        // Clear all columns
+        document.querySelectorAll('.col-content').forEach(el => el.innerHTML = '');
+
+        try {
+          // OPTIMIZATION FOR FREE TIER: Run StatsAnalyst ONCE globally
+          addWhisper('System', 'Initializing global Stats Analyst to analyze pitch...');
+          const weatherData = await fetchWeather(scenario);
+          const statsPrompt = `You are a cold data machine. Analyze the match state: "${scenario}". Weather info: ${weatherData}. Calculate live dew probability score based on weather.`;
+          const statsSchema = {
+            type: Type.OBJECT,
+            properties: {
+              bowler_recommendation: { type: Type.STRING },
+              batting_risk: { type: Type.STRING },
+              pitch_factor: { type: Type.STRING },
+              dew_impact: { type: Type.STRING },
+              pressure_index: { type: Type.INTEGER },
+              whisper: { type: Type.STRING }
+            },
+            required: ["bowler_recommendation", "batting_risk", "pitch_factor", "dew_impact", "pressure_index", "whisper"]
+          };
+          const mockGlobalStats = { bowler_recommendation: "Deploy strike bowler.", batting_risk: "High due to pressure.", pitch_factor: "Flat deck.", dew_impact: "Moderate.", pressure_index: 88, whisper: "[MOCK] Global pitch analysis." };
+          const globalStatsData = await safeGenerateContent(statsPrompt, statsSchema, mockGlobalStats);
+          addWhisper('StatsAnalyst', globalStatsData.whisper);
+          updatePressure(globalStatsData.pressure_index);
+
+          const captainsList = Object.keys(CAPTAINS);
+
+          for (const cap of captainsList) {
+            const col = document.querySelector(`#col-${cap}`);
+            col.style.display = 'flex';
+            await runAgentFlow(scenario, cap, col.querySelector('.col-content'), globalStatsData);
+            // small delay
+            await new Promise(r => setTimeout(r, 1000));
+          }
+        } catch (e) {
+          console.error("Critical execution error:", e);
+        }
+      } else {
+        transcript.innerHTML = '';
+        try {
+          await runAgentFlow(scenario, selectedCaptain, transcript);
+        } catch (e) {
+          console.error("Critical execution error:", e);
+        }
+      }
+
+      loader.style.display = 'none';
+      runBtn.disabled = false;
+    });
+
+  </script>
+</body>
+
+</html>
