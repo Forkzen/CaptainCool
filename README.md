@@ -1,5 +1,7 @@
 # Captains HUD: AI-Powered Cricket Strategy Simulator
 
+Demo Video Link - https://youtu.be/VudXVtMESMY
+
 ## Overview
 Captains HUD (formerly "Captain Cool") is an interactive, AI-driven web application that simulates high-pressure cricket match scenarios. Users can input a specific match situation (e.g., "19th over, 24 runs to win, heavy dew"), and the application uses Google's Gemini AI to generate strategic decisions, simulate a multi-agent debate, and deliver dynamic live commentary.
 
